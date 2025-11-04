@@ -12,6 +12,23 @@ spring:
       url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${sky.datasource.username}
       password: ${sky.datasource.password}
+      #---------数据库连接时间优化，可删除---------
+      # 连接池基本配置
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      # 超时配置
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      max-evictable-idle-time-millis: 600000
+      # 连接有效性检测
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      validation-query: SELECT 1
+      validation-query-timeout: 1
+      #---------数据库连接时间优化，可删除----------
   redis:
     host: ${sky.redis.host}
     port: ${sky.redis.port}
