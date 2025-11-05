@@ -88,7 +88,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         shoppingCart.setUserId(userId);
 
         List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
-        //如果数量大于1，则数量减一
+        //如果数量大于1，则进行接下来的逻辑
         if(list != null && list.size() > 0){
             shoppingCart = list.get(0);
 
