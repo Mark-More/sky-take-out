@@ -442,7 +442,7 @@ public class OrderServiceImpl implements OrderService {
 
         //订单只有存在且状态为4（派送中）时才可被完成
         if(ordersDB == null || !ordersDB.getStatus().equals(Orders.DELIVERY_IN_PROGRESS)){
-            throw new DeletionNotAllowedException(MessageConstant.ORDER_NOT_FOUND);
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
 
         Orders orders = new Orders();
@@ -474,5 +474,28 @@ public class OrderServiceImpl implements OrderService {
         orders.setCancelReason(ordersCancelDTO.getCancelReason());
         orders.setCancelTime(LocalDateTime.now());
         orderMapper.update(orders);
+    }
+
+    /**
+     * 订单催单
+     * @param id
+     */
+    @Override
+    public void reminder(Long id) {
+        //根据id查询订单
+        Orders ordersDB = orderMapper.getById(id);
+
+        //订单只有存在时才可被催单
+        if(ordersDB == null){
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        Map map = new HashMap();
+        map.put("type", 2);//1表示来单提醒，2表示客户催单
+        map.put("orderId", ordersDB.getId());
+        map.put("content", "订单号：" + ordersDB.getNumber());
+        String json = JSON.toJSONString(map);
+        //通过WebSocket向客户端推送消息
+        webSocketServer.sendToAllClient(json);
+
     }
 }
