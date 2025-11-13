@@ -4,6 +4,7 @@ import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
+import com.sky.vo.OrderReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import lombok.extern.slf4j.Slf4j;
@@ -39,15 +40,7 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public TurnoverReportVO getTurnoverStatistics(LocalDate begin, LocalDate end) {
         // 创建日期集合
-        List<LocalDate> dateList = new ArrayList<>();
-
-        dateList.add(begin);
-
-        while (!begin.equals(end)) {
-            //日期计算，计算指定日期的后一天对应的日期
-            begin = begin.plusDays(1);
-            dateList.add(begin);
-        }
+        List<LocalDate> dateList = createDateList(begin, end);
         // 创建营业额集合
         List<Double> turnoverList = new ArrayList<>();
         for (LocalDate date : dateList) {
@@ -80,15 +73,7 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public UserReportVO getUserStatistics(LocalDate begin, LocalDate end) {
         // 创建日期集合
-        List<LocalDate> dateList = new ArrayList<>();
-
-        dateList.add(begin);
-
-        while (!begin.equals(end)) {
-            //日期计算，计算指定日期的后一天对应的日期
-            begin = begin.plusDays(1);
-            dateList.add(begin);
-        }
+        List<LocalDate> dateList = createDateList(begin, end);
         // 创建用户数量集合
         // 创建新用户数量集合
         List<Integer> newUserList = new ArrayList<>();
@@ -118,5 +103,81 @@ public class ReportServiceImpl implements ReportService {
                 .newUserList(StringUtils.join(newUserList, ","))
                 .totalUserList(StringUtils.join(totalUserList, ","))
                 .build();
+    }
+
+    /**
+     * 指定时间段的订单统计
+     * @param begin
+     * @param end
+     * @return
+     */
+    @Override
+    public OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end) {
+        // 创建日期集合
+        List<LocalDate> dateList = createDateList(begin, end);
+        //遍历dateList集合，查询每天的有效订单数和订单总数
+        //创建订单总数集合
+        List<Integer> orderCountList = new ArrayList<>();
+        //创建有效订单数集合
+        List<Integer> validOrderCountList = new ArrayList<>();
+
+        for (LocalDate date : dateList) {
+            LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
+            LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
+
+            //查询每天的订单总数
+            // select count(id) from orders where order_time >= begin and order_time <= end
+            Integer orderCount = getOrderCount(beginTime, endTime, null);
+            //查询每天的有效订单数
+            //select count(id) from orders where order_time >= begin and order_time <= end and status = 5
+            Integer validOrderCount = getOrderCount(beginTime, endTime, Orders.COMPLETED);
+
+            orderCountList.add(orderCount);
+            validOrderCountList.add(validOrderCount);
+        }
+        //使用流的方式计算list集合中数据的和，也可以在上面for循环中累加
+        //创建订单总数
+        Integer totalOrderCount = orderCountList.stream().reduce(Integer::sum).get();
+        //创建有效订单总数
+        Integer validOrderCount = validOrderCountList.stream().reduce(Integer::sum).get();
+        //计算订单完成率
+        Double orderCompletionRate = 0.0;
+        if (totalOrderCount != 0) {
+            orderCompletionRate = validOrderCount.doubleValue() / totalOrderCount;
+        }
+        return OrderReportVO.builder()
+                .dateList(StringUtils.join(dateList, ","))
+                .orderCountList(StringUtils.join(orderCountList, ","))
+                .validOrderCountList(StringUtils.join(validOrderCountList, ","))
+                .totalOrderCount(totalOrderCount)
+                .validOrderCount(validOrderCount)
+                .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    private Integer getOrderCount(LocalDateTime begin, LocalDateTime end, Integer status) {
+        Map map = new HashMap();
+        map.put("begin", begin);
+        map.put("end", end);
+        map.put("status", status);
+        return orderMapper.countByMap(map);
+    }
+
+    /**
+     * 根据起始和结束日期创建日期列表
+     * @param begin 开始日期
+     * @param end 结束日期
+     * @return 包含起始日期到结束日期的所有日期列表
+     */
+    private List<LocalDate> createDateList(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList = new ArrayList<>();
+        LocalDate currentDate = begin;
+
+        while (!currentDate.isAfter(end)) {
+            dateList.add(currentDate);
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return dateList;
     }
 }
